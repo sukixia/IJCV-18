@@ -118,7 +118,15 @@ grestore
 \maketitle
 
 \begin{abstract}
-Parsing articulated objects like humans into semantic part regions (e.g. head, body and arms, etc.) from a natural image is a fundamental yet challenging problem in computer vision. The major difficulties of this problem derive from multi-instance confusion and large variability in human pose and scale. Current state-of-the-art methods use deep neural networks to predict part labels directly, and then refine the labels by a graphical model such as the dense CRF. These methods are still limited in complex natural scenes because they have no efficient mechanisms to handle multi-person overlapping or to adapt to the scale of human instances. In this work, we propose a part segmentation framework that handles these hurdles effectively. Our framework is scale-aware: we design an hierarchical ``auto-zoom" strategy to allow the model to adapt to the size of human instances and their corresponding parts. Our framework is also pose-guided: it predicts human pose and part segmentation jointly, letting the two tasks benefit each other. We extend the PASCAL VOC part datasets with pose joints and perform extensive experiments on it. We show that our method achieves state-of-the-art part segmentation performance, and is especially better at handling small human instances and small parts.       
+Parsing articulated objects like humans into semantic part regions (e.g. head, body and arms, etc.) from a natural image is a fundamental yet challenging problem in computer vision.
+The major difficulties of this problem derive from multi-instance confusion and large variability in human pose and scale.
+Current state-of-the-art methods use deep neural networks to predict part labels directly, and then refine the labels by a graphical model such as the dense CRF.
+These methods are still limited in complex natural scenes because they have no efficient mechanisms to handle multi-person overlapping or to adapt to the scale of human instances.
+In this work, we propose a part segmentation framework that handles these hurdles effectively.
+Our framework is scale-aware: we design an hierarchical ``auto-zoom" strategy to allow the model to adapt to the size of human instances and their corresponding parts.
+Our framework is also pose-guided: it predicts human pose and part segmentation jointly, letting the two tasks benefit each other.
+We extend the PASCAL VOC part datasets with pose joints and perform extensive experiments on it.
+We show that our method achieves state-of-the-art part segmentation performance, and is especially better at handling small human instances and small parts.       
 
 \keywords{semantic part segmentation \and pose estimation \and auto-zoom}
 %\PACS{PACS code1 \and PACS code2 \and more}
@@ -184,7 +192,30 @@ We illustrate our approach by extensive experiments on PASCAL-Person-Part datase
 As human semantic part segmentation and human pose estimation are two fundamental topics in computer vision, many graphical models on the two topics have been proposed during the past thirty years. With the advent of powerful deep learning techniques, some models start to use deep-learned features, or even perform the whole task within a deep neural network. Recently, there are also works that combine pose estimation and segmentation in graphical models. In this section, we give an overall review of previous literature in these aspects.
 
 \subsection{Human Semantic Part Segmentation}
-% Traditional methods on human semantic part segmentation fall into two major categories. One type of methods first generate region/segment proposals for each semantic part, then select and assemble the region proposals by a graphical model. Bo et al.~\cite{bo2011shape} generated region proposals by UCM segmentation~\cite{arbelaez2009contours}, ranked the region proposals using shape and appearance features, and assembled the proposals with simple geometric constraints. \cite{dong2013deformable} got region proposals by UCM and CPMC~\cite{carreira2012cpmc}, extracted a rich set of appearance features for each region proposal encoded by Fisher Kernel and second-order pooling, and assembled the region proposals with a dedicated And-Or graph (AOG). The other type of methods treat semantic part segmentation as scene parsing, adopting pixel-wise conditional random fields (CRFs) to infer the pixel-wise part labels. \cite{Yamaguchi12_ParsingClothFashion} built a CRF based on super-pixels and tried to classify each super-pixel into one of the semantic part types. They learned unary part classifiers for super-pixels based on traditional features, and used the output scores as unary terms in the CRF. For the pairwise terms, they trained logistic regression models to predict whether two neighboring pixels should have the same label, and also learned a consistency prior between each part type pair from the training data. These traditional methods perform well on simple images, but struggle in natural images with large pose/scale variation.
+Traditional methods on human semantic part segmentation fall into two major categories.
+One type of methods first generate region/segment proposals for each semantic part, then select and assemble the region proposals by a graphical model.
+Bo et al.~\cite{bo2011shape} generate region proposals by UCM segmentation~\cite{arbelaez2009contours}, rank the region proposals using shape and appearance features, and assemble the proposals with simple geometric constraints.
+Dong et al.~\cite{dong2013deformable} get region proposals by UCM and CPMC~\cite{carreira2012cpmc}, extract a rich set of appearance features for each region proposal encoded by Fisher Kernel and second-order pooling, and assemble the region proposals with a dedicated And-Or graph (AOG).
+The other type of methods treat semantic part segmentation as scene parsing, adopting pixel-wise conditional random fields (CRFs) to infer the pixel-wise part labels.
+Yamaguchi et al.~\cite{yamaguchi2012parsing} build a CRF based on super-pixels and try to classify each super-pixel into one of the semantic part types.
+They learn unary part classifiers for super-pixels based on traditional features, and use the output scores as unary terms in the CRF.
+For the pairwise terms, they train logistic regression models to predict whether two neighboring pixels should have the same label, and also learn a consistency prior between each part type pair from the training data.
+These traditional methods perform well on simple images, but struggle in natural images with large pose/scale variations.
+
+Over the past few years, deep convolutional neural networks (DCNNs)~\cite{lecun1998gradient} have pushed the performance to new heights in many computer vision tasks such as image classification and object detection. DCNNs have also been applied to semantic object segmentation in the wild~\cite{chen2016deeplab,dai2015boxsup,papandreou2015weakly}, showing that DCNNs can also be applied to segment object parts in the wild.
+Some extract deep-learned features for region proposals, and assemble the region proposals using a graphical model based on those features~\cite{xia2016pose}.
+Some use fully convolutional networks (FCNs)~\cite{long2015fully} to output pixel-wise part labels directly, tailed by an optional CRF to smooth the part labels~\cite{long2015fully,chen2016deeplab,wang2015joint}. Graphical models with DCNN features perform well on relatively simple datasets and give good details of parts, but they struggle in complex natural datasets with large pose/scale variation. FCN-type approaches handle pose variation better, but they still suffer from large scale variation (e.g. missing parts or giving coarse part boundary details), and can produce local confusion errors (e.g. labeling arm regions as legs, labeling background regions as arms, etc.) if the person is in a non-typical pose, or when there are some other object/person nearby with similar appearance.
+
+Recently, several works explore object-level context to produce better part segmentation results.
+Hariharan et al.~\cite{hariharan2015hypercolumns} perform object detection, object segmentation and part segmentation sequentially, in which the object is first localized by a RCNN~\cite{girshick2014rich}, then the object (in the form of a bounding box) is segmented by a FCN to produce an object mask, and finally part segmentation is performed by partitioning the mask. The process has two potential drawbacks: (1) it is complex to train all components of the model; (2) the error from object masks, e.g. local confusion and inaccurate edges, propagates to the part segments.
+Our hierarchical auto-zoom net model (HAZN) follows this general coarse-to-fine strategy, but is more unified and more importantly, we do not make premature decisions.
+Wang et al.~\cite{wang2015joint} employ a two-stream FCN to jointly infer object and part segmentations for animals, where the part stream was performed to discover part-level details and the object stream was performed to find object-level context.
+Although this work proves the usefulness of object-level context, it only uses a single-scale network for both object and part score prediction, where small-scale objects might be missed at the beginning and the scale variation of parts still remains unsolved.
+
+Some other recent works try to handle the scale issue within a DCNN structure.
+They commonly use multi-scale features from intermediate layers, and perform late fusion on them~\cite{long2015fully,hariharan2015hypercolumns,chen2016deeplab} in order to achieve scale invariance. Chen et al.~\cite{chen2016attention} propose a scale attention model, which learns pixel-wise weights for merging the outputs from three fixed scales.
+These approaches, though developed on powerful DCNNs, are all limited by the number of scales they can select and the possibility that the scales they select may not cover a proper one. Our HAZN model avoids the scale selection error by directly regressing the bounding boxes for objects/parts and zooming the regions into proper scales.
+In addition, this mechanism allows us to explore a broader range of scales, contributing a lot to the discovery of missing object instances and the accuracy of part boundaries.
 
 \subsection{Human Pose Estimation}
 
@@ -195,6 +226,8 @@ As human semantic part segmentation and human pose estimation are two fundamenta
 
 \section{Joint Prediction of Pose Estimation and Semantic Part Segmentation}
 \label{sec:pose_and_seg}
+
+\section{Conclusion}
 
 \begin{acknowledgements}
 AAA
@@ -241,6 +274,16 @@ Zhu, Long Leo, Yuanhao Chen, Chenxi Lin, and Alan Yuille. "Max margin learning o
 Hariharan, Bharath, Pablo Arbeláez, Ross Girshick, and Jitendra Malik. "Hypercolumns for object segmentation and fine-grained localization." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 447-456 (2015)
 \bibitem{krahenbuhl2011efficient}
 Krähenbühl, Philipp, and Vladlen Koltun. "Efficient inference in fully connected crfs with gaussian edge potentials." In Advances in Neural Information Processing Systems (NIPS), pp. 109-117 (2011)
+\bibitem{xia2016pose}
+Xia, Fangting, Jun Zhu, Peng Wang, and Alan L. Yuille. "Pose-Guided Human Parsing by an AND/OR Graph Using Pose-Context Features." In AAAI, pp. 3632-3640 (2016)
+\bibitem{chen2016attention}
+Chen, Liang-Chieh, Yi Yang, Jiang Wang, Wei Xu, and Alan L. Yuille. "Attention to scale: Scale-aware semantic image segmentation." In Proceedings of the IEEE conference on Computer Vision and Pattern Recognition (CVPR), pp. 3640-3649 (2016)
+%
+% semantic object segmentation
+\bibitem{dai2015boxsup}
+Dai, Jifeng, Kaiming He, and Jian Sun. "Boxsup: Exploiting bounding boxes to supervise convolutional networks for semantic segmentation." In Proceedings of the IEEE International Conference on Computer Vision (ICCV), pp. 1635-1643 (2015)
+\bibitem{papandreou2015weakly}
+Papandreou, George, Liang-Chieh Chen, Kevin Murphy, and Alan L. Yuille. "Weakly-and semi-supervised learning of a DCNN for semantic image segmentation." arXiv preprint arXiv:1502.02734 (2015)
 %
 % Pose estimation
 \bibitem{yang2011articulated}
@@ -301,6 +344,17 @@ Belongie, Serge, Jitendra Malik, and Jan Puzicha. "Shape context: A new descript
 Everingham, Mark, SM Ali Eslami, Luc Van Gool, Christopher KI Williams, John Winn, and Andrew Zisserman. "The pascal visual object classes challenge: A retrospective." In International Journal of Computer Vision 111, no. 1, pp 98-136 (2015)
 \bibitem{li2014secrets}
 Li, Yin, Xiaodi Hou, Christof Koch, James M. Rehg, and Alan L. Yuille. "The secrets of salient object segmentation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 280–287 (2014)
+%
+% Related works
+\bibitem{arbelaez2009contours}
+Arbelaez, Pablo, Michael Maire, Charless Fowlkes, and Jitendra Malik. "From contours to regions: An empirical evaluation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 2294-2301 (2009)
+\bibitem{carreira2012cpmc}
+Carreira, Joao, and Cristian Sminchisescu. "Cpmc: Automatic object segmentation using constrained parametric min-cuts." In IEEE Transactions on Pattern Analysis and Machine Intelligence, 34(7), pp 1312-1328 (2012)
+\bibitem{girshick2014rich}
+Girshick, Ross, Jeff Donahue, Trevor Darrell, and Jitendra Malik. "Rich feature hierarchies for accurate object detection and semantic segmentation." In Proceedings of the IEEE conference on Computer Vision and Pattern Recognition (CVPR), pp. 580-587 (2014)
+\bibitem{lecun1998gradient}
+LeCun, Yann, Léon Bottou, Yoshua Bengio, and Patrick Haffner. "Gradient-based learning applied to document recognition." In Proceedings of the IEEE, 86(11), pp. 2278-2324 (1998)
+
 \end{thebibliography}
 
 \end{document}
