@@ -218,6 +218,21 @@ These approaches, though developed on powerful DCNNs, are all limited by the num
 In addition, this mechanism allows us to explore a broader range of scales, contributing a lot to the discovery of missing object instances and the accuracy of part boundaries.
 
 \subsection{Human Pose Estimation}
+Part-based graphical models are popular in human pose estimation due to the fact that human instances are highly articulated. 
+Fischler and Elschlager~\cite{fischler1973representation} introduced the basic Pictorial Structural model (PS), a tree model with local part scores and kinematic pairwise terms.
+However, exact inference of PS on dense pixels was too time consuming at that time. Fast inference on PS was made possible by Felzenszwalb and Huttenlocher~\cite{felzenszwalb2005pictorial}, who proposed efficient distance transform algorithms. 
+Later, Andriluka~\cite{andriluka2009pictorial} improved Pictorial Structures by learning stronger part filters using Adaboost classifiers built on shape-context features of each part. Traditional models like PS suffer from two disadvantages.
+They are tree-structured models with traditional hand-crafted features, so they have limited representation power and can't handle large variations in pose and appearance.
+Besides, the pairwise terms are just geometric priors between part pairs, not strong and not data-dependent.
+To enhance the representation power of traditional models, multimodal compositional models are proposed. For example, Yang et al.~\cite{yang2011articulated} learn modes at the part level, consider compositional parts that connect to simple parts and model their geometric constraints;
+Sapp et al.~\cite{sapp2013modec} treat the entire human body as a mixture of templates;
+Zhu et al.~\cite{zhu2008max} and RothRock et al.~\cite{rothrock2013integrating} explore mixtures at middle-part level using an And-Or Graph (AOG).
+ 
+With the growing popularity of deep learning, recent methods rely on strong joint detectors trained by DCNNs~\cite{chen2014articulated,tompson2015efficient}, and often use a simple graphical model (e.g. tree model, And-Or Graph) to select and assemble joints into a valid pose configuration.
+These recent methods perform much better than traditional ones, but the localization of joints is still inaccurate (e.g. sometimes outside the human body) and they still struggle when there are multiple people overlapping each other.
+Some other approaches discard graphical models by modeling the spatial dependencies of joints within DCNNs~\cite{toshev2014deeppose,carreira2016human,chu2016structured}. These approaches perform well on relatively simple datasets, but their ability to handle large pose variations in natural multi-person datasets is limited.
+A very recent work, Deeper-Cut~\cite{insafutdinov2016deepercut}, addresses the multi-person issue explicitly, using integer linear programming to cluster joint candidates into multiple human instances and assign joint types to each joint candidate.
+Deeper-Cut handles multi-person overlapping well, but is very time-consuming (4 minutes per image) and its performance on datasets with large scale variation is not fully satisfactory. Our joint prediction model improves in these aspects by introducing a segment-joint consistency term that yields better localization of flexible joints such as wrists and ankles, and an effective auto-zoom strategy that can deal with humans of different sizes.
 
 \subsection{Joint Pose Estimation and Part Segmentation}
 
@@ -292,6 +307,28 @@ Yang, Yi, and Deva Ramanan. "Articulated pose estimation with flexible mixtures-
 Tompson, Jonathan, Ross Goroshin, Arjun Jain, Yann LeCun, and Christoph Bregler. "Efficient object localization using convolutional networks." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 648-656 (2015)
 \bibitem{chen2015parsing}
 Chen, Xianjie, and Alan Yuille. "Parsing occluded people by flexible compositions." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 3945-3954 (2015)
+\bibitem{fischler1973representation}
+Fischler, Martin A., and Robert A. Elschlager. "The representation and matching of pictorial structures." In IEEE Transactions on Computers, 100(1), pp. 67-92 (1973)
+\bibitem{felzenszwalb2005pictorial}
+Felzenszwalb, Pedro F., and Daniel P. Huttenlocher. "Pictorial structures for object recognition." In International Journal of Computer Vision, 61(1), pp. 55-79 (2005)
+\bibitem{andriluka2009pictorial}
+Andriluka, Mykhaylo, Stefan Roth, and Bernt Schiele. "Pictorial structures revisited: People detection and articulated pose estimation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 1014-1021 (2009)
+\bibitem{sapp2013modec}
+Sapp, Ben, and Ben Taskar. "Modec: Multimodal decomposable models for human pose estimation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 3674-3681 (2013)
+\bibitem{zhu2008max}
+Zhu, Long, Yuanhao Chen, Yifei Lu, Chenxi Lin, and Alan Yuille. "Max margin and/or graph learning for parsing the human body." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 1-8 (2008)
+\bibitem{rothrock2013integrating}
+Rothrock, Brandon, Seyoung Park, and Song-Chun Zhu. "Integrating grammar and segmentation for human pose estimation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 3214-3221 (2013)
+\bibitem{chen2014articulated}
+Chen, Xianjie, and Alan L. Yuille. "Articulated pose estimation by a graphical model with image dependent pairwise relations." In Advances in Neural Information Processing Systems (NIPS), pp. 1736-1744 (2014)
+\bibitem{toshev2014deeppose}
+Toshev, Alexander, and Christian Szegedy. "Deeppose: Human pose estimation via deep neural networks." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 1653-1660 (2014)
+\bibitem{carreira2016human}
+Carreira, Joao, Pulkit Agrawal, Katerina Fragkiadaki, and Jitendra Malik. "Human pose estimation with iterative error feedback." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 4733-4742 (2016)
+\bibitem{chu2016structured}
+Chu, Xiao, Wanli Ouyang, Hongsheng Li, and Xiaogang Wang. "Structured feature learning for pose estimation." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 4715-4723 (2016)
+\bibitem{insafutdinov2016deepercut}
+Insafutdinov, Eldar, Leonid Pishchulin, Bjoern Andres, Mykhaylo Andriluka, and Bernt Schiele. "Deepercut: A deeper, stronger, and faster multi-person pose estimation model." In European Conference on Computer Vision (ECCV), pp. 34-50 (2016)
 %
 % Fine-grained recognition
 \bibitem{branson2014bird}
