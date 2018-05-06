@@ -235,6 +235,7 @@ A very recent work, Deeper-Cut~\cite{insafutdinov2016deepercut}, addresses the m
 Deeper-Cut handles multi-person overlapping well, but is very time-consuming (4 minutes per image) and its performance on datasets with large scale variation is not fully satisfactory. Our joint prediction model improves in these aspects by introducing a segment-joint consistency term that yields better localization of flexible joints such as wrists and ankles, and an effective auto-zoom strategy that can deal with humans of different sizes.
 
 \subsection{Joint Pose Estimation and Part Segmentation}
+Recently, some researchers consider the correlation between pose estimation and segmentation. Yamaguchi et al.~\cite{yamaguchi2012parsing} perform human pose estimation and semantic part segmentation sequentially for clothes parsing, using a CRF with low-level features. Ladicky et al.~\cite{ladicky2013human} propose a principled formulation for joint pose estimation and part labeling under a CRF framework, using also low-level features. Dong et al.~\cite{dong2014towards} combine the two tasks with a manually designed And-Or graph. These methods demonstrate the complementary properties of the two tasks on relatively simple datasets, but they cannot deal with images with large pose variations or multi-person overlapping, mainly due to the less powerful features they use or the poor quality of their part region proposals. In contrast, our joint prediction model combines FCNs with graphical models, greatly boosting the representation power of models to handle large pose variation. We also introduce novel segment-joint consistency terms for both tasks, further improving the performance.
 
 \section{Hierarchical Auto-Zoom Net}
 \label{sec:hazn}
@@ -293,6 +294,10 @@ Krähenbühl, Philipp, and Vladlen Koltun. "Efficient inference in fully connect
 Xia, Fangting, Jun Zhu, Peng Wang, and Alan L. Yuille. "Pose-Guided Human Parsing by an AND/OR Graph Using Pose-Context Features." In AAAI, pp. 3632-3640 (2016)
 \bibitem{chen2016attention}
 Chen, Liang-Chieh, Yi Yang, Jiang Wang, Wei Xu, and Alan L. Yuille. "Attention to scale: Scale-aware semantic image segmentation." In Proceedings of the IEEE conference on Computer Vision and Pattern Recognition (CVPR), pp. 3640-3649 (2016)
+\bibitem{ladicky2013human}
+Ladicky, Lubor, Philip HS Torr, and Andrew Zisserman. "Human pose estimation using a joint pixel-wise and part-wise formulation." In proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 3578-3585 (2013)
+\bibitem{dong2014towards}
+Dong, Jian, Qiang Chen, Xiaohui Shen, Jianchao Yang, and Shuicheng Yan. "Towards unified human parsing and pose estimation." In proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 843-850 (2014)
 %
 % semantic object segmentation
 \bibitem{dai2015boxsup}
