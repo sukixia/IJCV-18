@@ -52,6 +52,9 @@ grestore
 % insert here the call for the packages your document requires
 %\usepackage{latexsym}
 % etc.
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{subfigure}
 \usepackage{color}
 \usepackage{bbm}
 \usepackage{enumitem}
@@ -59,6 +62,7 @@ grestore
 \usepackage{multirow}
 \usepackage{xspace}
 \usepackage{booktabs}
+\usepackage{caption}
 %
 % please place your own definitions here and don't use \def but
 % \newcommand{}{}
@@ -170,7 +174,7 @@ configurations. Traditional approaches suffer from limited feature representatio
 In this paper, we present a scale-aware and pose-guided part segmentation framework that effectively improves human semantic part segmentation in natural images with large pose/scale variation. The framework mainly contains two novel models: (1) a hierarchical auto-zoom model (HAZN) that handles the large scale variation of human instances and human parts; (2) a joint prediction model that combines pose estimation and semantic part segmentation together, letting the two tasks benefit each other. Here we give a brief introduction to the two proposed models.
 
 % Intuition of HAZN
-The hierarchical "auto-zoom" model (HAZN) model is a FCN-based model performing object/part scale estimation and part segmentation at the same time, adapting to the size of objects and parts. It's partially motivated by the proposal-free end-to-end detection strategies~\cite{huang2015densebox,liang2015proposal,ren2015faster,redmon2016you}. To get some intuition of this approach, observe in Fig.~\ref{fig:motivation_eccv}(a), that the scale and location of a target object, and of its corresponding
+The hierarchical ``auto-zoom" model (HAZN) model is a FCN-based model performing object/part scale estimation and part segmentation at the same time, adapting to the size of objects and parts. It's partially motivated by the proposal-free end-to-end detection strategies~\cite{huang2015densebox,liang2015proposal,ren2015faster,redmon2016you}. To get some intuition of this approach, observe in Fig.~\ref{fig:motivation_eccv}(a), that the scale and location of a target object, and of its corresponding
 parts, can be estimated accurately from the field-of-view (FOV) window
 by applying a deep neural network. Using estimated object and part scales, the semantic part segmentation results can become better and better, see Fig.~\ref{fig:motivation_eccv}(b). Please refer to Sec.~\ref{sec:hazn} for a detailed explanation of the HAZN model. 
 
@@ -234,11 +238,311 @@ Some other approaches discard graphical models by modeling the spatial dependenc
 A very recent work, Deeper-Cut~\cite{insafutdinov2016deepercut}, addresses the multi-person issue explicitly, using integer linear programming to cluster joint candidates into multiple human instances and assign joint types to each joint candidate.
 Deeper-Cut handles multi-person overlapping well, but is very time-consuming (4 minutes per image) and its performance on datasets with large scale variation is not fully satisfactory. Our joint prediction model improves in these aspects by introducing a segment-joint consistency term that yields better localization of flexible joints such as wrists and ankles, and an effective auto-zoom strategy that can deal with humans of different sizes.
 
+\begin{figure*}
+\begin{center}
+ \includegraphics[width=1.0\textwidth]{figs/framework_eccv.pdf}
+\end{center}
+\caption{Testing framework of the Hierarchical Auto-Zoom Net (HAZN). We address object part parsing in a wild scene, adapting to the size of objects (object-scale AZN) and parts (part-scale AZN). The part scores are predicted and refined by three FCNs, over three levels of granularity, i.e. image-level, object-level, and part-level. At each level, the FCN outputs the part score map for the current level, and estimates the locations and scales for next level. The details of parts are gradually discovered and improved along the proposed auto-zoom process (i.e. location/scale estimation, region zooming, and part score re-estimation).}
+\label{fig:framework_eccv}
+\end{figure*}
+
 \subsection{Joint Pose Estimation and Part Segmentation}
 Recently, some researchers consider the correlation between pose estimation and segmentation. Yamaguchi et al.~\cite{yamaguchi2012parsing} perform human pose estimation and semantic part segmentation sequentially for clothes parsing, using a CRF with low-level features. Ladicky et al.~\cite{ladicky2013human} propose a principled formulation for joint pose estimation and part labeling under a CRF framework, using also low-level features. Dong et al.~\cite{dong2014towards} combine the two tasks with a manually designed And-Or graph. These methods demonstrate the complementary properties of the two tasks on relatively simple datasets, but they cannot deal with images with large pose variations or multi-person overlapping, mainly due to the less powerful features they use or the poor quality of their part region proposals. In contrast, our joint prediction model combines FCNs with graphical models, greatly boosting the representation power of models to handle large pose variation. We also introduce novel segment-joint consistency terms for both tasks, further improving the performance.
 
-\section{Hierarchical Auto-Zoom Net}
+\section{Scale-Aware Part Segmentation Using Hierarchical Auto-Zoom Net}
 \label{sec:hazn}
+In this chapter, we will introduce a hierarchical method for object part segmentation that performs scale estimation
+and object parsing jointly and is able to adapt its scale to objects and parts. Using fully convolutional nets (FCNs)~\cite{long2015fully} to predict
+the scale and location of object instances and their corresponding parts (see Fig.~\ref{fig:motivation_eccv}(a)), the Hierarchical Auto-Zoom Net (HAZN)
+parses the objects at three levels of granularity, namely image-level, object-level, and part-level, gradually giving clearer and better parsing results
+(see Fig.~\ref{fig:motivation_eccv}(b)).
+
+% Brief introduction of the inference process.
+As shown in Fig.~\ref{fig:framework_eccv}, the HAZN sequentially combines two ``Auto-Zoom Nets" (AZNs), each of which predicts the locations and scales for objects (the first AZN) or parts (the second AZN), properly zooms (resizes) the predicted image regions, and refines the object parsing result for those image regions. The HAZN uses three fully convolutional neural networks (FCNs)~\cite{long2015fully} that share the same structure. The first FCN acts directly on the image to estimate a finite set of possible locations and sizes of objects (e.g. bounding boxes) with confidence scores, together with a part score map of the image. The part score map (in the bottom left of Fig.~\ref{fig:motivation_eccv}(b)) is similar to that proposed by previous deep-learned methods. The object bounding boxes are scaled to a fixed size by zooming in or zooming out (as applicable) and the image and part score maps within the boxes are also scaled (e.g. by bilinear interpolation for zooming in or downsampling for zooming out). Then the second FCN is applied to the scaled object bounding boxes to make proposals (bounding boxes) for the positions and sizes of the parts, with confidence values, and to re-estimate the part scores within the object bounding boxes. This yields improved part scores, see the bottom-middle score map of Fig.~\ref{fig:motivation_eccv}(b). We then apply the third FCN to the scaled part bounding boxes to produce new estimates of the part scores and to combine all of them (for different object and part bounding boxes) to output final part scores, see the bottom right of Fig.~\ref{fig:motivation_eccv}(b), which are our parse of the object. This strategy is modified slightly so that, for example, we scale humans differently depending on whether we have detected a complete human or only the upper part of a human, which can be determined automatically from the part score map.
+
+We illustrate the effectiveness of our ``auto-zoom'' approach by extensive experiments for parsing humans on the PASCAL-Person-Part dataset~\cite{chen2014detect} and for parsing animals on a horse-cow dataset~\cite{wang2015semantic}. These datasets are challenging because they have large variations in scale, pose, and location of the objects. We now briefly comment on the advantages of our approach for dealing with scale and how it differs from traditional methods. Previous methods mainly select a fixed set of scales in advance and then perform fusion on the outputs of a deep net at different layers. Computational requirements mean that the number of scales must be small and it is impractical (due to memory limitations) to use very fine scales. Our approach is considerably more flexible because we adaptively estimate scales at different regions in the image which allows us to search over a large range of scales. In particular, we can use very fine scales because we will probably only need to do this within small image regions. For example, our largest zooming ratio is 2.5 (at part level) on PASCAL while that number is 1.5 if we have to zoom the whole image. This is a big advantage when trying to detect small parts, such as the tail of a cow, as is shown by the experiments. In short, the adaptiveness of our approach and the way it combines scale estimation with parsing give novel computational advantages.
+
+\subsection{The Model}
+As demonstrated in Fig.~\ref{fig:framework_eccv}, our Hierarchical Auto-Zoom Net (HAZN) has three levels of granularity for tackling scale variation in object part segmentation,
+i.e. image-level, object-level, and part-level. At each level, a fully convolutional neural network (FCN) is used to perform scale/location estimation and part parsing simultaneously. The three levels of FCNs are all built on the same network structure, a modified FCN proposed by Chen et al.~\cite{chen2016deeplab}, namely DeepLab-LargeFOV. This network structure is one of the most effective FCNs in segmentation, so we also treat it as our baseline for final performance comparison.
+
+To handle scale variation in objects and parts, the HAZN concatenates two Auto-Zoom Nets (AZNs), namely object-scale AZN and part-scale AZN, into a unified network. The object-scale AZN refines the image-level part score map with object bounding box proposals while the part-scale AZN further refines the object-level part score map with part bounding box proposals. Each AZN employs an auto-zoom process: first estimates the region of interest (ROI), then properly resizes the predicted regions, and finally refine the part scores within the resized regions.
+
+\subsubsection{Object-Scale Auto-Zoom Net (AZN)}
+\label{subsubsec:AZN}
+For the task of object part segmentation, we are provided with $n$ training examples $\{\ve{I}_i, \ve{L}_i\}_{i=1}^{n}$, where $\ve{I}$ is the given image and $\ve{L}$ is the supervision information that provides discrete semantic labels of interest. Our target is to learn the posterior distribution $P(l_j | \ve{I},j)$ for each pixel j of an image $\ve{I}$. This distribution is approximated by our object-scale AZN, as shown in Fig.~\ref{fig:prob_model_eccv}.
+
+\begin{figure*}
+\begin{center}
+   \includegraphics[width=0.8\linewidth]{figs/prob_model_eccv.pdf}
+\end{center}
+ \caption{Object-scale auto-zoom model from a probabilistic view, which predicts ROI region $N(k)$ at object-scale, and then refines part scores based on the properly zoomed region $N(k)$. Details are in Sec.~\ref{subsubsec:AZN}.}
+\label{fig:prob_model_eccv}
+\end{figure*}
+
+% The part parsing network and the scale estimation network
+We first use the image-level FCN (see Fig.~\ref{fig:framework_eccv}) to produce the image-level part score map $P_{\iota_1}(l_j | \ve{I},j)$, which gives comparable performance to our baseline method (DeepLab-LargeFOV). This is a normal \emph{\textbf{part parsing network}} that uses the original image as input and outputs the pixel-wise part score map. Our object-scale AZN aims to refine this part score map with consideration of object instance scales. To do so, we add a second component to the image-level FCN, performing regression to estimate the size and location of an object bounding box (or ROI) for each pixel, together with a confidence map indicating the likelihood that the box is an object. This component is called a \emph{\textbf{scale estimation network}} (\textbf{SEN}), which shares the first few layers with the part parsing network in the image-level FCN. In math, the SEN corresponds to a probabilistic model $P(b_j | \ve{I}, j)$, where $b_j$ is the estimated bounding box for pixel $j$, and $P(b_j|...)$ is the confidence score of $b_j$.
+
+% NMS and region zooming
+After getting $\{b_j |\forall j\in\ve{I}\}$, we threshold the confidence map and perform non-maximum suppresion to yield a finite set of object ROIs (typically 5-10 per image, with some overlap): $\{b_k | k \in \ve{I}\}$. Each $b_k$ is associated with a confidence score $P(b_k)$. As shown in Fig.~\ref{fig:framework_eccv}, a \textbf{region zooming} operation is then performed on each $b_k$, resizing $b_k$ to a standard-sized ROI $N(k)$. Specifically, this zooming operation computes a zooming ratio $f(b_k, L^{b_k}_p)$ for bounding box $b_k$, based on the bounding box $b_k$ and the computed image-level part labels $L^{b_k}_p$ within the bounding box, and then enlarges or shrinks the image within the bounding box by the zooming ratio. We will discuss $f()$ in detail in Sec.~\ref{subsec:exp}.
+
+% Re-predict the part labels
+Now we have a set of zoomed ROI proposals $\{N(k)|k\in\ve{I}\}$, each $N(k)$ associated with score $P(b_k)$. We learn another probabilistic model $P(l_j | N(k), \ve{I}, j)$, which re-estimates the part label for each pixel $j$ within the zoomed ROI $N(k)$. This probabilistic model corresponds to the part parsing network in the object-level FCN (see Fig.~\ref{fig:framework_eccv}), which takes as input the zoomed object bounding boxes and outputs the part scores within those object bounding boxes.
+
+% Score merging
+The new part scores for the zoomed ROIs need to be merged to produce the object-level part score map for the whole image. Since there may be multiple ROIs that cover a pixel $j$, we define the neighbouring region set for pixel j as $\hua{Q}(j)=\{N(k) | j \in N(k), k \in \ve{I}\}$. Under this definition of $\hua{Q}(j)$, the \textbf{score merging} process can be expressed as Equ.~\ref{eqn:AZN}, which essentially computes the weighted sum of part scores for pixel $j$, from the zoomed ROIs that cover $j$. For a pixel that is not covered by any zoomed ROI, we simply use its image-level part score as the current part score. Formally, the object-level part score $P_{\iota_2}(l_j|\ve{I}, j)$, is computed as, 
+\begin{align}
+P_{\iota_2}(l_j|\ve{I}, j) &= \sum\nolimits_{N(k) \in \hua{Q}(j)} P(l_j | N(k), \ve{I}, j) P(N(k) | \ve{I}, j);  \nonumber \\
+P(N(k) | \ve{I}, j) &= P(b_k) / \textstyle{\sum_{k: N(k) \in \hua{Q}(j)} P(b_k)}
+\label{eqn:AZN}
+\end{align}
+
+\subsubsection{Hierarchical Auto-Zoom Net (HAZN)}
+The scale of object parts can also vary considerably even if the scale of the object is fixed. This leads to a hierarchical strategy with multiple stages,
+called the Hierarchical Auto-Zoom Net (HAZN), which applies AZNs to images to find objects and then on objects to find parts, followed by a refinement stage.
+As shown in Fig.~\ref{fig:framework_eccv}, we add the part-scale AZN to the end of the object-scale AZN.
+
+We add a second component to the object-level FCN, i.e. the SEN network, to estimate the size and location of part bounding boxes,
+together with confidence maps for every pixel within each zoomed object ROI. Again the confidence map is thresholded, and non-maximal suppresion is applied,
+to yield a finite set of part ROIs (typically 5-30 per image, with some overlap). Each part ROI is zoomed to a fixed size.
+Then, we re-estimate the part scores within each zoomed part ROI using the part parsing network in the part-level FCN.
+The part parsing network is the only component of the part-level FCN, which takes the zoomed part ROI and the zoomed object-level part scores (within the part ROI) as inputs.
+After getting the part scores within each zoomed Part ROI, the score merging process is the same as in the object-scale AZN.
+
+It's easy to extend our HAZN model to include more AZNs at finer scale levels if we focus on smaller object parts such as human eyes.
+If the HAZN contains $n$ AZNs, there are $n+1$ FCNs needed to be trained.
+The $\iota$-th FCN learns $P_\iota(l_j | N(j)_{\iota-1}, ...)$ to refine the part scores based on the scale/location estimation results $P_{\iota-1}(N(j)_{\iota-1} | ...)$
+and the part parsing results $P_{\iota-1}(l_j | N(j)_{\iota-1}, ...)$ from the previous level $\iota-1$.
+At the same time, the $\iota$-th FCN also learns $P_\iota(N(j)_l | ...)$ to estimate the region of interest (ROI) for the next level $\iota+1$.
+
+\subsubsection{Training and Testing Phases for Object-Scale AZN} 
+\label{subsubsec:train_test}
+In this section, we introduce the specific networks to learn our probalistic models. Specifically, we use a modern version of FCN, i.e. \textbf{DeepLab-LargeFOV}~\cite{chen2016deeplab}, as our basic network structure. DeepLab-LargeFOV is a stronger variant of DeepLab~\cite{chen2016deeplab}, which takes the raw image as input, and outputs dense feature maps. DeepLab-LargeFOV modifies the filter weights at the $fc_6$ layer so that its field-of-view is larger. We refer our readers to the original paper for details.
+
+\begin{figure*}
+\begin{center}
+   \includegraphics[width=0.8\linewidth]{figs/model_eccv.pdf}
+\end{center}
+\caption{Ground truth regression target for training the scale estimation network (SEN) in the image-level FCN. Details in Sec.~\ref{subsubsec:train_test}.}
+\label{fig:train_sen}
+\end{figure*}
+
+\paragraph{\textbf{Training the SEN.}}
+The scale estimation network (SEN) aims to regress the region of interest (ROI) for each pixel $j$ in the form of a bounding box, $b_j$.
+Here we borrow the idea presented in the DenseBox~\cite{huang2015densebox} to do scale estimation, since it is simple and performing well enough for our task. 
+In detail, at object level, the ROI of pixel $j$ corresponds to the object instance box that pixel $j$ belongs to. For training the SEN,
+two output label maps are needed as visualized in Fig.~\ref{fig:train_sen}. The first one is the bounding box regression map $\ve{L}_{b}$,
+which is a four-channel output for each pixel $j$ to represent its ROI $b_j$: $\ve{l}_{bj}=\{dx_j, dy_j, w_j, h_j\}$.
+Here $(dx_j, dy_j)$ is the relative position from pixel $j$ to the center of $b_j$; $h_j$ and $w_j$ are the height and width of $b_j$.
+We then re-scale the outputs by dividing them with $400$. 
+The other target output map is a binary confidence seed map $\ve{L}_{c}$, in which $\ve{l}_{cj}\in\{0,1\}$ is the ROI selection indicator at pixel $j$.
+It indicates the preferred pixels for us to use for ROI prediction, which helps the algorithm prevent many false positives.
+In practice, we choose the central pixels of each object instance as the confidence seeds,
+which tend to predict the object bounding boxes more accurately than those pixels at the boundary of an object instance region. 
+
+Given the ground-truth label map of object part parsing, we can easily derive the training examples for the SEN:
+$\hua{H} = \{\ve{I}_i, \ve{L}_{bi}, \ve{L}_{ci}\}_{i=1}^{n}$, where $n$ is the number of training instances.
+We minimize the negative log likelihood to learn the weights $\ve{W}$ for the SEN, and the loss $l_{SEN}$ is defined in Equ.~\ref{eqn:loss_sen}.
+\begin{align}
+\label{eqn:loss_sen}
+l_{SEN}(\hua{H}|\ve{W}) =& \frac{1}{n}\sum\nolimits_{i}(l_{b}(\ve{I}_i, \ve{L}_{bi} | \ve{W}) + \lambda l_{c}(\ve{I}_i, \ve{L}_{ci} | \ve{W})) \nonumber\\
+l_{c}(\ve{I}, \ve{L}_{c}|\ve{W}) =& -\beta\sum\limits_{j:l_{cj}=1} \log P(l_{cj}^*=1|\ve{I}, \ve{W}) \nonumber \\
+                                  & -(1-\beta)\sum\limits_{j:l_{cj}=0}\log P(l_{cj}^*=0|\ve{I}, \ve{W}) \\
+l_{b}(\ve{I}, \ve{L}_{b}|\ve{W}) =& \frac{1}{|\ve{L}_{cj}^+|}\sum\nolimits_{j:l_{cj}=1}\|\ve{l}_{bj}-\ve{l}_{bj}^*\|^2 \nonumber
+\end{align}
+For the confidence seeds, we employ the balanced cross entropy loss, where $l_{cj}^*$ and $l_{cj}$ are the predicted value and ground truth value respectively. The probability is from a sigmoid function performing on the activation of the last layer of the CNN at pixel $j$.  $\beta$ is defined as the proportion of pixels with $l_{cj}=0$ in the image, which is used to balance the positive and negative instances. The loss for bounding box regression is the Euclidean distance over the confidence seed points, and $|\ve{L}_{cj}^+|$ is the number of pixels with $l_{cj}=1$.
+
+\paragraph{\textbf{Testing the SEN.}}
+For testing, the SEN outputs both the confidence score map $P(l_{cj}^*=1|\ve{I}, \ve{W})$ and a four-dimensional bounding box $\ve{l}_{bj}^*$ for each pixel $j$.
+We regard a pixel $j$ with confidence score higher than $0.5$ to be reliable and output its bounding box $b_j = \ve{l}_{bj}^*$, associated with confidence score
+$P(b_j) = P(l_{cj}^*=1|\ve{I}, \ve{W})$. We perform non-maximum suppression based on the confidence scores,
+yielding several bounding boxes $\{\ve{b}_j | j=1,2,...\}$ as candidate ROIs with confidence scores $P(\ve{b}_j)$.
+Each candidate ROI $b_j$ is then properly zoomed, becoming $N(j)$.
+
+\paragraph{\textbf{Training the part parsing network.}}
+The training of the part parsing network is standard. For the object-level FCN, the part parsing network is trained based on all the the zoomed image regions (ROIs),
+with the ground-truth part label maps $\hua{H_p} = \{\ve{L}_{pi}\}_{i=1}^{n}$ within the zoomed ROIs.
+For the image-level FCN, the part parsing network is trained based on the original training images, and has the same structure as the scale estimation network (SEN) in the FCN.
+Therefore, we merge the part parsing network with the SEN, yielding the image-level FCN with loss defined in Equ.~\ref{eqn:AZN_loss}.
+Here, $l_{p}(\ve{I}, \ve{L}_{p})$ is the commonly used multinomial logistic regression loss for classification.
+\begin{align}
+\label{eqn:AZN_loss}
+l_{AZN}(\hua{H},\hua{H_p}|\ve{W}) =\frac{1}{n}\sum\nolimits_il_{p}(\ve{I}_i, \ve{L}_{pi}) + l_{SEN}(\hua{H}|\ve{W})
+\end{align}
+
+\paragraph{\textbf{Testing the part parsing network.}}
+For testing the object-scale AZN, we first run the image-level FCN, yielding part score maps at the image level and bounding boxes for the object level.
+Then we zoom onto the bounding boxes and parse these regions based on the object-level FCN model, yielding part score maps at the object level.
+By merging the part score maps from the two levels, we get better parsing results for the whole image.
+
+\subsection{Experiments}
+\label{subsec:exp}
+
+\subsubsection{Implementation Details}
+\paragraph{\textbf{Selection of confidence seeds.}}
+To train the scale estimation network (SEN), we need to select confidence seeds for object instances or parts.
+For human instances, we use the human instance masks provided by the PASCAL-Person-Part Dataset~\cite{chen2014detect} and
+select the central $7\times7$ pixels within each instance mask as the confidence seeds. To get the confidence seeds for human parts,
+we first compute connected part segments from the groundtruth part label map, and then also select the central $7\times7$ pixels within each part segment.
+We present the details of our approach for humans because the extension to horses and cows is straightforward.
+
+\paragraph{\textbf{Zooming ratio of ROIs.}}
+The SEN networks in the FCNs provide a set of human/part bounding boxes (ROIs), $\{b_j | j\in \ve{I}\}$,
+which are then zoomed to a proper human/part scale. The zooming ratio of $b_j$, $f(b_j, L^{b_j}_p)$,
+is decided based on the size of $b_j$ and the previously computed part label map $L^{b_j}_p$ within $b_j$.
+We use slightly different strategies to compute the zooming ratio at the human and part levels. 
+For the part level, we simply resize the bounding box to a fixed size, i.e. $f_p(b_j) = s_t / max(w_j, h_j)$,
+where $s_t = 255$ is the target size. Here $w_j$ and $h_j$ are the width and height of $b_j$. 
+For the human level, we need to consider the frequently occurred truncation case when only the upper half of a human instance is visible. 
+In practice, we use the image-level part label map $L^{b_j}_p$ within the box, and check the existence of legs to decide whether the full body is visible.
+If the full body is visible, we use the same strategy as parts. Otherwise, we change the target size $s_t$ to $140$,
+yielding relative smaller region than the full body visible case. We select the target size based on a validation set. 
+Finally, we limit all zooming ratio $f_p(b_j)$ within the range $[0.4, 2.5]$ for both human and part bounding boxes to avoid artifacts from up or down sampling of images.
+
+\subsubsection{Experimental Protocol}
+\paragraph{\textbf{Dataset.}}
+We conduct experiments on humans part segmentation using the PASCAL-Person-Part dataset~\cite{chen2014detect}, which is a subset from the PASCAL VOC 2010 dataset.
+The dataset contains detailed part annotations for every person, e.g. head, torso, etc. We merge the annotations into six clases:
+Head, Torso, Upper/Lower Arms and Upper/Lower Legs (plus one background class). 
+We only use those images containing humans for training (1716 images in the training set) and testing (1817 images in the validation set),
+the same as~\cite{chen2016attention}. Note that parsing humans in PASCAL is challenging because it has larger variations in scale and pose than other human parsing datasets. 
+In addtion, we also perform parsing experiments on the horse-cow dataset~\cite{wang2015semantic}, which contains animal instances in a rough bounding box.
+In this dataset, we keep the same experimental setting with~\cite{wang2015joint}.
+
+\paragraph{\textbf{Training.}}
+We train the FCNs using stochastic gradient descent with mini-batches. Each mini-batch contains 30 images.
+The initial learning rate is 0.001 (0.01 for the final classifier layer) and is decreased by a factor of 0.1 after every 2000 iterations.
+We set the momentum to be 0.9 and the weight decay to be 0.0005. The initialization model is a modified VGG-16 network pre-trained on ImageNet.
+Fine-tuning our network on all the reported experiments takes about 30 hours on a NVIDIA Tesla K40 GPU.
+After training, the average inference time for one PASCAL image is 1.3 s/image.
+
+\paragraph{\textbf{Evaluation metric.}}
+The object part segmentation results are evaluated in terms of mean IOU (mIOU).
+It is computed as the pixel intersection-over-union (IOU) averaged across classes~\cite{everingham2014pascal},
+which is also used recently to evaluate parts~\cite{wang2015joint,chen2016attention}.
+We also evaluate the part segmentation performance w.r.t. each object instance in terms of $AP^r_{part}$ as defined in~\cite{hariharan2015hypercolumns}.
+
+\paragraph{\textbf{Network architecture.}}
+We use DeepLab-LargeFOV~\cite{chen2016deeplab} as building blocks for the FCNs in our Hierarchical Auto-Zoom Net (HAZN).
+Recall that our HAZN consists of three FCNs working at different levels of granularity: image level, object level, and part level.
+At each level, HAZN outputs part parsing scores, and estimats locations and scales for the next level of granularity (e.g. objects or parts).
+
+\subsubsection{Experimental Results on Parsing Humans in the Wild}
+\label{subsubsec:human_parsing_eccv}
+
+\paragraph{\textbf{Comparison with state-of-the-arts.}}
+As shown in Tab.~\ref{table:seg_eval_eccv}, we compare our full model (HAZN) with four baselines. The first baseline is DeepLab-LargeFOV~\cite{chen2016deeplab}.
+The second one is DeepLab-LargeFOV-CRF, which adds a post-processing step to DeepLab-LargeFOV by means of a fully-connected Conditional Random Field (CRF)~\cite{krahenbuhl2011efficient}. CRFs are commonly used as postprocessing for object semantic segmentation to refine boundaries~\cite{chen2016deeplab}.
+The third one is Multi-Scale Averaging, which feeds the DeepLab-LargeFOV model with images resized to three fixed scales (0.5, 1.0 and 1.5) and then
+takes the average of the three part score maps to produce the final parsing result.
+The fourth one is Multi-Scale Attention~\cite{chen2016attention}, a most recent work which uses a scale attention model to handle the scale variations in object part segmentation.
+\begin{table}[!tb]
+\centering
+\setlength{\tabcolsep}{5pt}
+\resizebox{1\columnwidth}{!}{
+\begin{tabular}{l | c c c c c c c | c}
+\toprule[0.2 em]
+Method & head & torso & u-arms & l-arms & u-legs & l-legs & bg & Avg \\ \midrule \midrule
+DeepLab-LargeFOV~\cite{chen2016deeplab} & 78.09 & 54.02 & 37.29 & 36.85 & 33.73 & 29.61 & 92.85 & 51.78 \\
+DeepLab-LargeFOV-CRF & 80.13 & 55.56 & 36.43  & 38.72 & 35.50 & 30.82  & 93.52 & 52.95 \\
+Multi-Scale Averaging & 79.89 & 57.40 & 40.57 & 41.14 & 37.66 & 34.31 & 93.43 & 54.91 \\
+Multi-Scale Attention~\cite{chen2016attention} & \textbf{81.47} & 59.06 & 44.15 & 42.50 & 38.28 & 35.62 & 93.65 & 56.39 \\
+\hline 
+%DeepLab-LargeFOV-MSc & 79.43 & 55.01 & 39.03 & 39.95 & 35.44 & 32.28 & 93.14 & 53.47 \\
+HAZN (no object scale) & 80.25 & 57.20 & 42.24 & 42.02 & 36.40 & 31.96 & 93.42 & 54.78 \\
+HAZN (no part scale) & 79.83 & 59.72 & 43.84 & 40.84 & 40.49 & 37.23 & 93.55 & 56.50 \\
+%Hierarchical Zooming (MSc + LargeFOV) & 80.66 & 58.73 &  42.60 & 42.65 & 39.01 & 34.36 & 93.55 & 55.94 \\
+HAZN (full model) & 80.76 & \textbf{60.50} & \textbf{45.65} & \textbf{43.11} & \textbf{41.21} & \textbf{37.74} & \textbf{93.78} & \textbf{57.54} \\
+\bottomrule[0.1 em]
+\end{tabular}
+}
+\caption{Part segmentation accuracy (\%) on PASCAL-Person-Part in terms of mean IOU. We compare our full model (HAZN) with two sub-models and four state-of-the-art baselines.}
+\label{table:seg_eval_eccv}
+\end{table}
+
+Our HAZN obtains the performance of 57.5\%, which is 5.8\% better than DeepLab-LargeFOV, and 4.5\% better than DeepLab-LargeFOV-CRF. Our model significantly improves the segmentation accuracy in all parts. Note we do not use any CRF for post processing. The CRF, though proven effective in refining boundaries in object segmentation, is not strong enough at recovering details of human parts as well as correcting the errors made by the DeepLab-LargeFOV.
+
+The third baseline (Multi-Scale Averaging) enumerates multi-scale features which is commonly used to handle the scale variations, yet its performance is poorer than ours, indicating the effectiveness of our auto-zoom framework.
+
+Our overall mIOU is 1.15\% better than the fourth baseline (Multi-Scale Attention), but we are much better in terms of detailed parts like upper legs (around 3\% improvement). In addition, we further analyze the scale-invariant ability in Tab.~\ref{table:seg_eval_scalewise_eccv}, which both methods aim to improve.
+We can see that our model surpasses Multi-Scale Attention in all instance sizes especially at size XS (9.5\%) and size S (5.5\%). 
+
+\paragraph{\textbf{Importance of object and part scale.}}
+As shown in Tab.~\ref{table:seg_eval_eccv}, we study the effect of the two scales in our HAZN.
+In practice, we remove either the object-scale AZN or the part-scale AZN from the full HAZN model, yielding two sub-models: (1) HAZN (no object scale), which only handles the scale variation at part level; (2) HAZN (no part scale), which only handles the scale variation at object instance level. 
+
+Compared with our full model, removing the object-scale AZN causes 2.8\% mIOU degradation while removing the part-scale AZN results in 1\% mIOU degradation. 
+We can see that the object-scale AZN, which handles the scale variation at object instance level, contributes a lot to our final parsing performance.
+For the part-scale AZN, it further improves the parsing by refining the detailed part predictions, e.g. around 3\% improvement of lower arms as shown in Tab.~\ref{table:seg_eval_eccv}, yielding visually more satisfactory results. This demonstrates the effectiveness of the two scales in our HAZN model.
+
+\paragraph{\textbf{Evaluation w.r.t. size of human instance.}}
+Since we handle human with various sizes, it is important to check how our model performs with respect to the change of human size in images. 
+In our experiments, we categorize all the ground truth human instances into four different sizes according to the bounding box area of each instance $s_b$
+(the square root of the bounding box area). Then we compute the mean IOU (within the bounding box) for each of these four scales.
+
+The four sizes are defined as follows: (1) Size XS: $s_b \in [0,80]$, where the human instance is extremely small in the image;
+(2) Size S: $s_b \in [80,140]$; (3) Size M: $s_b \in [140,220]$; (4) Size L: $s_b \in [220,520]$,
+which usually corresponds to truncated human instances where the human's head or torso covers the majority of the image.
+
+The results are given in Tab.~\ref{table:seg_eval_scalewise_eccv}.
+The baseline DeepLab-LargeFOV performs badly at size XS or S (usually only the head or the torso can be detected by the baseline),
+while our HAZN (full model) improves over it significantly by 14.6\% for size XS and 10.8\% for size S.
+This shows that HAZN is particularly good for small objects, where the parsing is difficult to obtain.
+For instances in size M and L, our model also significantly improve the baselines by around 5\%.
+In general, by using HAZN, we achieve much better scale invariant property to object size than a generally used FCN type of model.
+We also list the results for the other three baselines for reference. 
+
+\begin{table}[!tb]
+  \centering
+  \setlength{\tabcolsep}{10pt}
+   \resizebox{0.9\columnwidth}{!}{
+  \begin{tabular}{l | c c c c}
+    \toprule[0.2 em]
+    Method & Size XS & Size S & Size M & Size L \\ \midrule \midrule
+    DeepLab-LargeFOV~\cite{chen2016deeplab} & 32.5 & 44.5 & 50.7 & 50.9 \\
+    DeepLab-LargeFOV-CRF & 31.5 & 44.6 & 51.5 & 52.5 \\
+    Multi-Scale Averaging & 33.7 & 45.9 & 52.5 & 54.7 \\
+    Multi-Scale Attention~\cite{chen2016attention} & 37.6 & 49.8 & 55.1 & 55.5 \\
+    \hline 
+    HAZN (no object scale) & 38.2 & 51.0 & 55.1 & 53.4 \\    
+    HAZN (no part scale) & 45.1 & 53.1 & 55.0 & 55.0  \\
+    HAZN (full model) & \textbf{47.1} & \textbf{55.3} & \textbf{56.8} & \textbf{56.0} \\ \bottomrule[0.1 em]
+  \end{tabular}
+  }
+ \caption{Part segmentation accuracy w.r.t. size of human instance (\%) on PASCAL-Person-Part in terms of mean IOU.}
+ \label{table:seg_eval_scalewise_eccv}
+\end{table}
+
+In addition, it is also important to jointly perform the two scale AZNs in a sequence. To show this, we additionally list the results from our model without object/part scale AZN in the $5_{th}$ and the $6_{th}$ row respectively. 
+By jumping over object scale (HAZN no object scale), the performance becomes significantly worse at size XS,
+since the model can barely detect the object parts at the image-level when the object is too small.  However, if we remove part scale (HAZN no part scale),
+the performance also dropped in all sizes. This is because using part scale AZN can recover the part details much better than only using object scale.
+Our HAZN (full model), which sequentially leverage the benefits from both the object scale and part scale, yielding the best performance overall.
+
+\paragraph{\textbf{Instance-wise part segmentation accuracy.}} 
+We evaluate our part parsing results w.r.t. each human instance in terms of $AP^r_{part}$ as defined in~\cite{hariharan2015hypercolumns}. The segment IOU threshold is set to 0.5. A human instance segment is correct only when it overlaps enough with a groundtruth instance segment. To compute the intersection of two segments, we only consider the pixels whose part labels are also right.
+
+To generate instance segmentation (which is not our major task), we follow a similar strategy to~\cite{hariharan2015hypercolumns} by first generating object detection box and then doing instance segmentation. Specifically, we use fast R-CNN to produce a set of object bounding box proposals, and each box is associated with a confidence score. Then within each bounding box, we use FCN to predict a coarse object instance mask, and use the coarse instance mask to retrieve corresponding part segments from our final HAZN part label map. Last, we use the retrieved part segments to compose a new instance mask where we keep the boundary of part segments. In the instance overlapping cases, we follow the boundary from the predicted instance mask.
+
+We first directly compare with the number reported by~\cite{hariharan2015hypercolumns}, on the whole validation set of PASCAL 2010. Our full HAZN model achieves \textbf{43.08\%} in $AP^r_{part}$, \textbf{14\%} higher than~\cite{hariharan2015hypercolumns}. We also compare with two state-of-the-art baselines (i.e. DeepLab-LargeFOV~\cite{chen2016deeplab} and Multi-Scale Attention~\cite{chen2016attention}) on the PASCAL-Person-Part dataset. For both baselines, we applied the same strategy to generate instances but with different part parsing results. As shown in Tab.~\ref{table:apr_part_eccv}, our model is 12\% points higher than DeepLab-LargeFOV and 6\% points higher than Multi-Scale Attention, in terms of $AP^r_{part}$. 
+
+\begin{table}[!tb]
+  \centering
+  \setlength{\tabcolsep}{10pt}
+   \resizebox{0.95\columnwidth}{!}{
+  \begin{tabular}{l | c c c}
+    \toprule[0.2 em]
+        & DeepLab-LargeFOV~\cite{chen2016deeplab} & Multi-Scale Attention~\cite{chen2016attention} &  HAZN(full model) \\ \midrule \midrule
+    $AP^r_{part}$ & 31.32 & 37.53 & 43.72 \\
+ \bottomrule[0.1 em]
+  \end{tabular}
+  }
+  \caption{Instance-wise part segmentation accuracy on PASCAL-Person-Part in terms of $AP^r_{part}$.}
+\label{table:apr_part_eccv}
+\end{table}  
+
+\paragraph{\textbf{Qualitative results.}} 
+
 
 \section{Joint Prediction of Pose Estimation and Semantic Part Segmentation}
 \label{sec:pose_and_seg}
@@ -298,6 +602,8 @@ Chen, Liang-Chieh, Yi Yang, Jiang Wang, Wei Xu, and Alan L. Yuille. "Attention t
 Ladicky, Lubor, Philip HS Torr, and Andrew Zisserman. "Human pose estimation using a joint pixel-wise and part-wise formulation." In proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 3578-3585 (2013)
 \bibitem{dong2014towards}
 Dong, Jian, Qiang Chen, Xiaohui Shen, Jianchao Yang, and Shuicheng Yan. "Towards unified human parsing and pose estimation." In proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 843-850 (2014)
+\bibitem{wang2015semantic}
+Wang, Jianyu, and Alan L. Yuille. "Semantic part segmentation using compositional model combining shape and appearance." In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 1788-1797 (2015)
 %
 % semantic object segmentation
 \bibitem{dai2015boxsup}
