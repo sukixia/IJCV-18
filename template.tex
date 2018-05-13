@@ -522,14 +522,10 @@ Our HAZN (full model), which sequentially leverage the benefits from both the ob
 \paragraph{\textbf{Instance-wise part segmentation accuracy.}} 
 We evaluate our part parsing results w.r.t. each human instance in terms of $AP^r_{part}$ as defined in~\cite{hariharan2015hypercolumns}. The segment IOU threshold is set to 0.5. A human instance segment is correct only when it overlaps enough with a groundtruth instance segment. To compute the intersection of two segments, we only consider the pixels whose part labels are also right.
 
-To generate instance segmentation (which is not our major task), we follow a similar strategy to~\cite{hariharan2015hypercolumns} by first generating object detection box and then doing instance segmentation. Specifically, we use fast R-CNN to produce a set of object bounding box proposals, and each box is associated with a confidence score. Then within each bounding box, we use FCN to predict a coarse object instance mask, and use the coarse instance mask to retrieve corresponding part segments from our final HAZN part label map. Last, we use the retrieved part segments to compose a new instance mask where we keep the boundary of part segments. In the instance overlapping cases, we follow the boundary from the predicted instance mask.
-
-We first directly compare with the number reported by~\cite{hariharan2015hypercolumns}, on the whole validation set of PASCAL 2010. Our full HAZN model achieves \textbf{43.08\%} in $AP^r_{part}$, \textbf{14\%} higher than~\cite{hariharan2015hypercolumns}. We also compare with two state-of-the-art baselines (i.e. DeepLab-LargeFOV~\cite{chen2016deeplab} and Multi-Scale Attention~\cite{chen2016attention}) on the PASCAL-Person-Part dataset. For both baselines, we applied the same strategy to generate instances but with different part parsing results. As shown in Tab.~\ref{table:apr_part_eccv}, our model is 12\% points higher than DeepLab-LargeFOV and 6\% points higher than Multi-Scale Attention, in terms of $AP^r_{part}$. 
-
-\begin{table}[!tb]
+\begin{table}
   \centering
   \setlength{\tabcolsep}{10pt}
-   \resizebox{0.95\columnwidth}{!}{
+   \resizebox{1.0\columnwidth}{!}{
   \begin{tabular}{l | c c c}
     \toprule[0.2 em]
         & DeepLab-LargeFOV~\cite{chen2016deeplab} & Multi-Scale Attention~\cite{chen2016attention} &  HAZN(full model) \\ \midrule \midrule
@@ -541,8 +537,108 @@ We first directly compare with the number reported by~\cite{hariharan2015hyperco
 \label{table:apr_part_eccv}
 \end{table}  
 
-\paragraph{\textbf{Qualitative results.}} 
+To generate instance segmentation (which is not our major task), we follow a similar strategy to~\cite{hariharan2015hypercolumns} by first generating object detection box and then doing instance segmentation. Specifically, we use fast R-CNN to produce a set of object bounding box proposals, and each box is associated with a confidence score. Then within each bounding box, we use FCN to predict a coarse object instance mask, and use the coarse instance mask to retrieve corresponding part segments from our final HAZN part label map. Last, we use the retrieved part segments to compose a new instance mask where we keep the boundary of part segments. In the instance overlapping cases, we follow the boundary from the predicted instance mask.
 
+We first directly compare with the number reported by~\cite{hariharan2015hypercolumns}, on the whole validation set of PASCAL 2010. Our full HAZN model achieves \textbf{43.08\%} in $AP^r_{part}$, \textbf{14\%} higher than~\cite{hariharan2015hypercolumns}. We also compare with two state-of-the-art baselines (i.e. DeepLab-LargeFOV~\cite{chen2016deeplab} and Multi-Scale Attention~\cite{chen2016attention}) on the PASCAL-Person-Part dataset. For both baselines, we applied the same strategy to generate instances but with different part parsing results. As shown in Tab.~\ref{table:apr_part_eccv}, our model is 12\% points higher than DeepLab-LargeFOV and 6\% points higher than Multi-Scale Attention, in terms of $AP^r_{part}$. 
+
+\begin{figure*}
+\centering
+\includegraphics[width=1.00\linewidth]{figs/results_v3_eccv.pdf}
+\caption{Qualitative comparison on the PASCAL-Person-Part dataset. We compare with DeepLab-LargeFOV-CRF~\cite{chen2016deeplab} and HAZN (no part scale). Our proposed HAZN models (the $3_{rd}$ and $4_{th}$ columns) attain better visual parsing results, especially for small scale human instances and small parts such as legs and arms.}
+\label{fig:seg_image_eccv}
+\end{figure*}
+
+\paragraph{\textbf{Qualitative results.}} 
+We visually show several example results from the PASCAL-Person-Part dataset in Fig.~\ref{fig:seg_image_eccv}. The baseline DeepLab-LargeFOV-CRF produces several errors due to lack of object and part scale information, e.g. background confusion ($1_{st}$ row), human part confusion ($3_{rd}$ row), or important part missing ($4_{th}$ row), yielding non-satisfactory part parsing results. Our HAZN (no part scale), which only contains object-scale AZN, already successfully relieves the confusions for large scale human instances while recovers the parts for small scale human instances. By further introducing part scale, the part details and boundaries are recovered even better, which are more visually satisfactory.
+
+More visual examples are provided in Fig.~\ref{fig:human_res_eccv}, comparing with more baselines.
+It can be seen that our full model (HAZN) gives much more satisfied part parsing results than the state-of-the-art baselines. Specifically, for small-scale human instances (e.g. the 1, 2, 5 rows of the figure), our HAZN recovers human parts like lower arms and lower legs and gives more accurate part boundaries; for medium-scale or large-scale human instances (e.g. the 3, 4, 9, 10 rows of the figure), our model relieves the local confusion with other parts or with the background.
+
+\paragraph{\textbf{Failure cases.}}
+Our typical failure modes are shown in Fig.~\ref{fig:seg_image_fail_eccv}. Compared with the baseline DeepLab-LargeFOV-CRF, our models give more reasonable parsing results with less local confusion, but they still suffer from heavy occlusion and unusual poses.
+
+\begin{figure*}
+\centering
+\includegraphics[width=1.0\linewidth]{figs/failure_modes_v2_eccv.pdf}
+\caption{Failure cases for both the baseline and our models.}
+\label{fig:seg_image_fail_eccv}
+\end{figure*}
+
+% More visual images.
+\begin{figure*}
+\centering
+\hspace*{-0.4cm}
+\includegraphics[width=0.95\linewidth]{figs/supplementary_results_eccv.pdf}
+\vspace{-1\baselineskip}
+\caption{More qualitative comparison on PASCAL-Person-Part. The baselines are explained in Sec.~\ref{subsubsec:human_parsing_eccv}.}
+\label{fig:human_res_eccv}
+\end{figure*}
+
+\subsubsection{Experimental Results on the Horse-Cow Dataset}
+\label{subsubsec:horses_eccv}
+To show the generality of our HAZN approach to instance-wise object part segmentation,
+we also applied our method to horse instances and cow instances presented in~\cite{wang2015semantic}.
+All the testing procedures are the same as those described above for humans.
+
+Copying the baseline numbers from~\cite{wang2015joint}, we give the part segmentation results for horses and cows in Tab.~\ref{table:seg_res_horse_cow_eccv}.
+It shows that our baseline models from the DeepLab-LargeFOV~\cite{chen2016deeplab} already achieve competitive results
+with the state-of-the-arts, while our HAZN provides a big improvement for horses and cows.
+The improvement over the state-of-the-art JPO method~\cite{wang2015joint} is roughly 5\% mIOU.
+It is most noticeable for small parts, e.g. the improvement for detecting horse/cow head and cow tails is more than 10$\%$.
+This shows that our ``auto-zoom'' strategy can be effectively generalized to other objects for part segmentation.
+
+\begin{table}
+\centering
+  \setlength{\tabcolsep}{5pt}
+  \resizebox{0.9\columnwidth}{!}{
+  \begin{tabular}{l |c c c c c | c}
+	  \toprule[0.2 em]
+	  \multicolumn{7}{c}{Horse} \\
+	  \midrule
+	  Method & Bkg & head & body & leg & tail &  Avg. \\ \midrule 
+	  SPS & 79.14 & 47.64 & 69.74 & 38.85 & -  & - \\
+	  HC$^*$ & 85.71 & 57.30 & 77.88 & 51.93 & 37.10  & 61.98 \\
+	  JPO & {87.34} & {60.02} & 77.52 & {58.35} & \textbf{51.88}  & {67.02} \\
+	  \midrule
+	  LargeFOV & 87.44 & 64.45 & 80.70 & 54.61 & 44.03 & 66.25 \\
+	  HAZN & \textbf{90.94}  & \textbf{70.75} &  \textbf{84.49}  & \textbf{63.91}  & 51.73 & \textbf{72.36} \\
+	  \midrule [0.1 em]
+	  \multicolumn{7}{c}{Cow} \\ \midrule
+	  Method & Bkg & head & body & leg & tail &  Avg. \\ \midrule 
+	  SPS & 78.00 & 40.55 & 61.65 & 36.32 & -  & - \\
+	  HC$^*$ & 81.86 & 55.18 & 72.75 & 42.03 & 11.04 & 52.57 \\
+	  JPO & {85.68} & {58.04} & {76.04} & {51.12} & {15.00} & {57.18} \\ \midrule
+	  LargeFOV & 86.56 & 62.76 & 78.42 & 48.83 & 19.97 & 59.31 \\
+	  HAZN & \textbf{90.71}  & \textbf{75.18}  &  \textbf{83.33}  & \textbf{57.42}  & \textbf{29.37}  &  \textbf{67.20} \\
+	  \bottomrule[0.1 em]
+  \end{tabular}
+  }
+ \caption{Part segmentation accuracy over the Horse-Cow dataset in terms of mean IOU (mIOU). We compare with the semantic part segmentation (SPS)~\cite{wang2015semantic}, the Hypercolumn (HC$^*$)~\cite{hariharan2015hypercolumns} and the joint part and object (JPO) results~\cite{wang2015joint}. We also list the performance of DeepLab-LargeFOV (LargeFOV)~\cite{chen2016deeplab}.}
+ \label{table:seg_res_horse_cow_eccv}
+\end{table}
+
+We also provide qualitative evaluations in Fig.~\ref{fig:horse_cow_res_eccv}, comparing our full model with three state-of-the-art baselines. The three baselines are explained in Sec.~\ref{subsubsec:human_parsing_eccv}. We can observe that using our model, small parts such as legs and tails have been effectively recovered, and the boundary accuracy of all parts has been improved. 
+
+% More visual images of horses and cows
+\begin{figure*}
+\centering
+\includegraphics[width=0.95\linewidth]{figs/horse_cow_visual_results_eccv.pdf}
+\caption{Qualitative comparison on the Horse-Cow Dataset. The baselines are explained in Sec.~\ref{subsubsec:human_parsing_eccv}.}
+\label{fig:horse_cow_res_eccv}
+\end{figure*}
+
+\subsection{Summary}
+To handle the big variation in natural images, we explain in this chapter an object part segmentation model called Hierarchical Auto-Zoom Net (HAZN), yieleding per-pixel segmentation of object parts. It adaptively estimates the scales of objects, and their parts, by a two-stage process of Auto-Zoom Nets. We perform extensive experiments on the challenging PASCAL dataset, showing that HAZN performs significantly better compared to state of the art methods, when applied to humans, horses and cows.
+
+Unlike standard methods which process the image at a fixed range of scales, HAZN’s strategy of searching for objects and then for parts enables it, for example, to zoom in to small image regions and enlarge them to scales which would be prohibitively expensive (in terms of memory) if applied to the entire image (as fixed scale methods would require).
+
+The ``auto-zoom'' idea of HAZN can be easily applied to other tasks, e.g. human pose estimation, fine-grained part localization, and so on.
+In Sec.~\ref{sec:pose_and_seg}, we use the ``auto-zoom'' idea to significantly improve the performance of multi-person human pose estimation in
+natural images.
+
+Looking at the failure cases of HAZN (see Fig.~\ref{fig:seg_image_fail_eccv}), we notice that HAZN can still make errors about the overall pose configuration (e.g. labeling arms as legs, labeling a second person’s legs as the first person’s, etc.) when the person is in an extreme pose,
+or the appearance of different parts are very similar, or there are other people overlapping with this person.
+This motivates us to combine useful top-down pose information with the deep-based segmentation model HAZN, which we also explore in Sec.~\ref{sec:pose_and_seg}.
 
 \section{Joint Prediction of Pose Estimation and Semantic Part Segmentation}
 \label{sec:pose_and_seg}
