@@ -642,6 +642,38 @@ This motivates us to combine useful top-down pose information with the deep-base
 
 \section{Joint Prediction of Pose Estimation and Semantic Part Segmentation}
 \label{sec:pose_and_seg}
+Human pose estimation and semantic part segmentation are two crucial and correlated tasks in human-centric analysis. However, the two tasks are mostly solved independently without considering their correlations.
+In fact, the two tasks are complementary and solving them jointly can reduce the learning difficulty of addressing each of them individually. As demonstrated in the middle column of Fig.~\ref{fig:motivation_cvpr}, for pose estimation, using loss functions w.r.t. the joints solely may omit the knowledge of pixel-wise part appearance coherence, yielding joints located outside a human instance or misleading joints when two people are close to each other; for part segmentation, on the other hand, using a loss function that only respects pixel-wise part labels tends to lack the proper overall human shape regularization, yielding missing or errorneous predictions when the appearance cues are weak or missing. As shown in the right column of Fig.~\ref{fig:motivation_cvpr}, by handling pose estimation and semantic part segmentation jointly, the ambiguity in pose estimation (e.g. out of instance region) can be corrected by considering semantic part segments, while the estimated pose skeleton provides object-level context and regularity to help part segments align with human instances, e.g. over the details of arms and legs where appearance cues are missing.
+
+In Sec.~\ref{sec:hazn}, we introduce a deep-based part segmentation model, Hierarchical Auto-Zoom Net (HAZN), which performs quite well on the challenging dataset PASCAL. However, we notice that some severe pose errors can't be avoided and the boundary details of arms and legs are not satisfactory.
+This motivates us to propose a ``pose-guided'' semantic part segmentation model, which incorporates top-down pose cues into HAZN, performing pose estimation and semantic part segmentation jointly.
+
+Specifically, we illustrate the framework of the joint prediction model in Fig.~\ref{fig:framework_cvpr}.
+Firstly, given an image that contains multiple people, we train two FCNs: Pose FCN and Part FCN.
+Similar to~\cite{insafutdinov2016deepercut}, the Pose FCN outputs the pixel-wise joint score map,
+i.e. the potential of joints at each pixel (how likely a type of joint is located at certain pixel),
+and also outputs the joint neighbour score map, i.e. the potential of the location likelihood of neighboring joints for each joint type.
+The Part FCN produces the part score map for each semantic part type.
+Secondly, the three types of information are fused through a FCRF to refine the human joint locations, where a novel smoothness term on both part segments and joint proposals (generated from the initially estimated pixel-wise joint score map) are applied to encourage the consistency between segments and joints.
+Thirdly, the refined pose joints are re-organized into pose features that encode overall shape information, and are fed into a second-stage Part FCN as an additional input besides the initial part score map, yielding better segmentation results.
+To reduce the complexity of the FCRF, rather than infer over the full image as~\cite{insafutdinov2016deepercut}, we adopt a human detector~\cite{ren2015faster} to first get the bounding box for each human instance and resize each instance region using the ``auto-zoom'' idea described in Sec.~\ref{sec:hazn}.
+Our whole inference procedure is then performed within each resized region.
+
+In order to train and evaluate the joint prediction model, we augment the challenging PASCAL-Person-Part dataset~\cite{chen2014detect} with 14 human pose joint locations through manual labeling and make the annotations public. This dataset includes 3533 images that contain large variation of human poses, scales and occlusion. We evaluate our method over this dataset, and show that our approach outperforms the most recent competing methods for both tasks. In particular, our method is more effective and much faster (8 seconds versus 4 minutes) than DeeperCut~\cite{insafutdinov2016deepercut} which is arguably the most effective algorithm for multi-person pose estimation.
+
+\begin{figure*}[!tb]
+\begin{center}
+   \includegraphics[width=0.95\textwidth]{figs/framework_v2_cvpr.pdf}
+\end{center}
+\caption{The framework of our joint pose estimation and part segmentation model. Initial joint scores and part segment scores are fused to yield better pose estimation results, and then the estimated poses are used to refine part segmentation.}
+\label{fig:framework_cvpr}
+\end{figure*}
+
+\subsection{The Model}
+
+\subsection{Experiments}
+
+\subsection{Summary}
 
 \section{Conclusion}
 
